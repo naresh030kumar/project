@@ -1,2 +1,0 @@
-# project
-color detection
