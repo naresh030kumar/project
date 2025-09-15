@@ -1,0 +1,135 @@
+import tkinter as tk
+from tkinter import filedialog
+from PIL import Image, ImageTk
+import colorsys
+
+class ColorPickerApp:
+    def __init__(self, master):
+        self.master = master
+        master.title("Image Color Picker")
+        master.geometry("500x600")
+
+        self.image_path = tk.StringVar()
+        self.pil_image = None
+        self.img_tk = None
+
+        # Image Selection Section
+        self.browse_button = tk.Button(master, text="Browse Image", command=self.browse_image)
+        self.browse_button.pack(pady=10)
+
+        self.image_label = tk.Label(master, text="No image selected", width=400, height=300, relief="solid", borderwidth=1)
+        self.image_label.pack(pady=5)
+        self.image_label.bind("<Button-1>", self.on_image_click)
+
+        # Color Information Display Section
+        self.color_info_frame = tk.LabelFrame(master, text="Detected Color")
+        self.color_info_frame.pack(pady=10, padx=10, fill="x")
+
+        self.rgb_label = tk.Label(self.color_info_frame, text="RGB: ")
+        self.rgb_label.pack()
+
+        self.name_label = tk.Label(self.color_info_frame, text="Closest Name: ")
+        self.name_label.pack()
+
+        self.hex_label = tk.Label(self.color_info_frame, text="Hex: ")
+        self.hex_label.pack()
+
+        self.color_preview_canvas = tk.Canvas(self.color_info_frame, width=50, height=50, bg="white", relief="raised")
+        self.color_preview_canvas.pack(pady=5)
+
+    def browse_image(self):
+        file_path = filedialog.askopenfilename(
+            title="Select an Image File",
+            filetypes=[("Image files", "*.png;*.jpg;*.jpeg;*.gif;*.bmp")]
+        )
+        if file_path:
+            self.image_path.set(file_path)
+            self.display_selected_image(file_path)
+
+    def display_selected_image(self, path):
+        try:
+            self.pil_image = Image.open(path)
+           
+            # Resize image while maintaining aspect ratio
+            img_width, img_height = self.pil_image.size
+            ratio = min(400/img_width, 300/img_height)
+            new_width = int(img_width * ratio)
+            new_height = int(img_height * ratio)
+
+            resized_img = self.pil_image.resize((new_width, new_height), Image.LANCZOS)
+            self.img_tk = ImageTk.PhotoImage(resized_img)
+            self.image_label.config(image=self.img_tk)
+            self.image_label.image = self.img_tk
+        except Exception as e:
+            print(f"Error displaying image: {e}")
+            self.image_label.config(image="")
+            self.pil_image = None
+
+    def on_image_click(self, event):
+        if self.pil_image:
+            # Get coordinates relative to the original image size
+            label_width = self.image_label.winfo_width()
+            label_height = self.image_label.winfo_height()
+           
+            img_width, img_height = self.pil_image.size
+           
+            # Calculate the scaling ratio
+            ratio = min(label_width / img_width, label_height / img_height)
+
+            # Convert click coordinates to original image coordinates
+            original_x = int(event.x / ratio)
+            original_y = int(event.y / ratio)
+
+            try:
+                rgb = self.pil_image.getpixel((original_x, original_y))
+                if isinstance(rgb, int):  # Handle grayscale images
+                    rgb = (rgb, rgb, rgb)
+                elif len(rgb) == 4:  # Handle RGBA images
+                    # If alpha is 0, the pixel is transparent, we can show a default color
+                    if rgb[3] == 0:
+                        rgb = (255, 255, 255) # White as a default for transparency
+                    else:
+                        rgb = rgb[:3]
+               
+                closest_name = self.get_closest_color_name(rgb)
+                hex_color = "#{:02x}{:02x}{:02x}".format(rgb[0], rgb[1], rgb[2])
+
+                self.rgb_label.config(text=f"RGB: ({rgb[0]}, {rgb[1]}, {rgb[2]})")
+                self.name_label.config(text=f"Closest Name: {closest_name}")
+                self.hex_label.config(text=f"Hex: {hex_color}")
+                self.update_color_preview(rgb)
+
+            except IndexError:
+                # This can happen if the user clicks outside the image when it's not resized to fill the label
+                print("Clicked outside the image boundaries.")
+            except Exception as e:
+                print(f"Error getting pixel data: {e}")
+
+    def update_color_preview(self, rgb):
+        hex_color = "#{:02x}{:02x}{:02x}".format(rgb[0], rgb[1], rgb[2])
+        self.color_preview_canvas.config(bg=hex_color)
+
+    def get_closest_color_name(self, rgb):
+        # A simple, static dictionary of color names and their RGB values
+        color_names = {
+            "Red": (255, 0, 0), "Green": (0, 128, 0), "Blue": (0, 0, 255), "Yellow": (255, 255, 0),
+            "Cyan": (0, 255, 255), "Magenta": (255, 0, 255), "White": (255, 255, 255), "Black": (0, 0, 0),
+            "Gray": (128, 128, 128), "Purple": (128, 0, 128), "Orange": (255, 165, 0), "Pink": (255, 192, 203),
+            "Brown": (165, 42, 42)
+        }
+       
+        min_distance = float('inf')
+        closest_name = "Unknown"
+
+        for name, color_rgb in color_names.items():
+            # Calculate Euclidean distance in RGB space
+            distance = ((rgb[0] - color_rgb[0])**2 + (rgb[1] - color_rgb[1])**2 + (rgb[2] - color_rgb[2])**2)**0.5
+            if distance < min_distance:
+                min_distance = distance
+                closest_name = name
+        return closest_name
+
+if __name__ == '__main__':
+    root = tk.Tk()
+    app = ColorPickerApp(root)
+    root.mainloop()
