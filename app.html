@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Detection Application</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .upload-section {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .image-section {
+            flex: 2;
+            min-width: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .results-section {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        #imageCanvas {
+            max-width: 100%;
+            height: auto;
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            cursor: crosshair;
+        }
+        .color-box {
+            width: 100px;
+            height: 100px;
+            border: 2px solid #333;
+            border-radius: 10px;
+            margin: 10px auto;
+        }
+        .slider-container {
+            margin: 15px 0;
+        }
+        .slider {
+            width: 100%;
+        }
+        button {
+            background: #6e8efb;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+            width: 100%;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #5a7de0;
+        }
+        .result-item {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        .coordinates {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #777;
+            font-size: 14px;
+        }
+        .instruction {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎨 Color Detection Application</h1>
+        <p>Upload an image and click anywhere to detect the color</p>
+    </div>
+
+    <div class="instruction">
+        <h3>How to use:</h3>
+        <ol>
+            <li>Upload an image using the file uploader below</li>
+            <li>Click anywhere on the image to detect the color</li>
+            <li>View the RGB values, color name, and color preview</li>
+        </ol>
+    </div>
+
+    <div class="container">
+        <div class="upload-section">
+            <h2>Upload Image</h2>
+            <input type="file" id="imageUpload" accept="image/*">
+            <div class="slider-container">
+                <label for="xSlider">X Coordinate: <span id="xValue">0</span></label>
+                <input type="range" id="xSlider" class="slider" min="0" max="100" value="50">
+            </div>
+            <div class="slider-container">
+                <label for="ySlider">Y Coordinate: <span id="yValue">0</span></label>
+                <input type="range" id="ySlider" class="slider" min="0" max="100" value="50">
+            </div>
+            <button id="detectButton">Detect Color</button>
+            
+            <div style="margin-top: 20px;">
+                <h3>About this app</h3>
+                <p>This application detects colors from images. Upload an image, select a pixel, and view the RGB values along with the closest color name.</p>
+            </div>
+        </div>
+
+        <div class="image-section">
+            <h2>Image Preview</h2>
+            <canvas id="imageCanvas"></canvas>
+            <p>Click on the image or use the sliders to select a pixel</p>
+        </div>
+
+        <div class="results-section">
+            <h2>Detection Results</h2>
+            <div id="results">
+                <p>Upload an image and select a pixel to see results</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Color Detection Application | Built with HTML, CSS and JavaScript</p>
+    </div>
+
+    <script>
+        // Color dataset
+        const colors = [
+            { name: 'Red', r: 255, g: 0, b: 0 },
+            { name: 'Green', r: 0, g: 128, b: 0 },
+            { name: 'Blue', r: 0, g: 0, b: 255 },
+            { name: 'Yellow', r: 255, g: 255, b: 0 },
+            { name: 'Orange', r: 255, g: 165, b: 0 },
+            { name: 'Purple', r: 128, g: 0, b: 128 },
+            { name: 'Pink', r: 255, g: 192, b: 203 },
+            { name: 'Brown', r: 165, g: 42, b: 42 },
+            { name: 'Gray', r: 128, g: 128, b: 128 },
+            { name: 'Black', r: 0, g: 0, b: 0 },
+            { name: 'White', r: 255, g: 255, b: 255 },
+            { name: 'Cyan', r: 0, g: 255, b: 255 },
+            { name: 'Magenta', r: 255, g: 0, b: 255 },
+            { name: 'Lime', r: 0, g: 255, b: 0 },
+            { name: 'Maroon', r: 128, g: 0, b: 0 },
+            { name: 'Navy', r: 0, g: 0, b: 128 },
+            { name: 'Olive', r: 128, g: 128, b: 0 },
+            { name: 'Teal', r: 0, g: 128, b: 128 },
+            { name: 'Silver', r: 192, g: 192, b: 192 },
+            { name: 'Gold', r: 255, g: 215, b: 0 }
+        ];
+
+        // DOM elements
+        const imageUpload = document.getElementById('imageUpload');
+        const imageCanvas = document.getElementById('imageCanvas');
+        const ctx = imageCanvas.getContext('2d');
+        const xSlider = document.getElementById('xSlider');
+        const ySlider = document.getElementById('ySlider');
+        const xValue = document.getElementById('xValue');
+        const yValue = document.getElementById('yValue');
+        const detectButton = document.getElementById('detectButton');
+        const resultsDiv = document.getElementById('results');
+
+        let currentImage = null;
+        let currentWidth = 0;
+        let currentHeight = 0;
+
+        // Load image from file input
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    // Resize image to fit canvas while maintaining aspect ratio
+                    const maxWidth = 600;
+                    const maxHeight = 400;
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > maxWidth) {
+                        height = (maxWidth / width) * height;
+                        width = maxWidth;
+                    }
+                    
+                    if (height > maxHeight) {
+                        width = (maxHeight / height) * width;
+                        height = maxHeight;
+                    }
+                    
+                    imageCanvas.width = width;
+                    imageCanvas.height = height;
+                    currentWidth = width;
+                    currentHeight = height;
+                    
+                    ctx.drawImage(img, 0, 0, width, height);
+                    currentImage = img;
+                    
+                    // Update sliders
+                    xSlider.max = width - 1;
+                    ySlider.max = height - 1;
+                    xSlider.value = Math.floor(width / 2);
+                    ySlider.value = Math.floor(height / 2);
+                    xValue.textContent = xSlider.value;
+                    yValue.textContent = ySlider.value;
+                    
+                    // Draw crosshair
+                    drawCrosshair(parseInt(xSlider.value), parseInt(ySlider.value));
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Draw crosshair on canvas
+        function drawCrosshair(x, y) {
+            if (!currentImage) return;
+            
+            // Redraw image
+            ctx.drawImage(currentImage, 0, 0, currentWidth, currentHeight);
+            
+            // Draw crosshair
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, currentHeight);
+            ctx.moveTo(0, y);
+            ctx.lineTo(currentWidth, y);
+            ctx.stroke();
+            
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, currentHeight);
+            ctx.moveTo(0, y);
+            ctx.lineTo(currentWidth, y);
+            ctx.stroke();
+            
+            // Draw circle at point
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, Math.PI * 2);
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        // Handle canvas click
+        imageCanvas.addEventListener('click', function(e) {
+            if (!currentImage) return;
+            
+            const rect = imageCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            xSlider.value = Math.round(x);
+            ySlider.value = Math.round(y);
+            xValue.textContent = xSlider.value;
+            yValue.textContent = ySlider.value;
+            
+            drawCrosshair(x, y);
+            detectColor();
+        });
+
+        // Update crosshair when sliders change
+        xSlider.addEventListener('input', function() {
+            xValue.textContent = this.value;
+            if (currentImage) {
+                drawCrosshair(parseInt(this.value), parseInt(ySlider.value));
+            }
+        });
+
+        ySlider.addEventListener('input', function() {
+            yValue.textContent = this.value;
+            if (currentImage) {
+                drawCrosshair(parseInt(xSlider.value), parseInt(this.value));
+            }
+        });
+
+        // Detect color button
+        detectButton.addEventListener('click', detectColor);
+
+        // Detect color function
+        function detectColor() {
+            if (!currentImage) {
+                resultsDiv.innerHTML = '<p>Please upload an image first</p>';
+                return;
+            }
+            
+            const x = parseInt(xSlider.value);
+            const y = parseInt(ySlider.value);
+            
+            // Get pixel data
+            const pixelData = ctx.getImageData(x, y, 1, 1).data;
+            const r = pixelData[0];
+            const g = pixelData[1];
+            const b = pixelData[2];
+            
+            // Find closest color
+            let minDistance = Number.MAX_VALUE;
+            let closestColor = null;
+            
+            for (const color of colors) {
+                const distance = Math.sqrt(
+                    Math.pow(r - color.r, 2) +
+                    Math.pow(g - color.g, 2) +
+                    Math.pow(b - color.b, 2)
+                );
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestColor = color;
+                }
+            }
+            
+            // Display results
+            resultsDiv.innerHTML = `
+                <div class="result-item">
+                    <h3>RGB Values</h3>
+                    <p>R: ${r}, G: ${g}, B: ${b}</p>
+                </div>
+                <div class="result-item">
+                    <h3>Color Name</h3>
+                    <p>${closestColor.name}</p>
+                </div>
+                <div class="result-item">
+                    <h3>Color Preview</h3>
+                    <div class="color-box" style="background-color: rgb(${r}, ${g}, ${b})"></div>
+                </div>
+                <div class="result-item">
+                    <h3>HEX Value</h3>
+                    <p>#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}</p>
+                </div>
+            `;
+        }
+
+        // Initialize with a sample image
+        window.addEventListener('load', function() {
+            // Create a sample image programmatically
+            const sampleImg = new Image();
+            sampleImg.onload = function() {
+                imageCanvas.width = 400;
+                imageCanvas.height = 300;
+                currentWidth = 400;
+                currentHeight = 300;
+                
+                ctx.fillStyle = 'rgb(200, 200, 200)';
+                ctx.fillRect(0, 0, 400, 300);
+                
+                // Draw some color patches
+                ctx.fillStyle = 'rgb(255, 0, 0)';
+                ctx.fillRect(50, 50, 60, 60);
+                
+                ctx.fillStyle = 'rgb(0, 255, 0)';
+                ctx.fillRect(150, 50, 60, 60);
+                
+                ctx.fillStyle = 'rgb(0, 0, 255)';
+                ctx.fillRect(250, 50, 60, 60);
+                
+                ctx.fillStyle = 'rgb(255, 255, 0)';
+                ctx.fillRect(50, 150, 60, 60);
+                
+                ctx.fillStyle = 'rgb(255, 165, 0)';
+                ctx.fillRect(150, 150, 60, 60);
+                
+                ctx.fillStyle = 'rgb(128, 0, 128)';
+                ctx.fillRect(250, 150, 60, 60);
+                
+                currentImage = sampleImg;
+                
+                // Update sliders
+                xSlider.max = 399;
+                ySlider.max = 299;
+                xSlider.value = 200;
+                ySlider.value = 150;
+                xValue.textContent = xSlider.value;
+                yValue.textContent = ySlider.value;
+                
+                // Draw crosshair
+                drawCrosshair(parseInt(xSlider.value), parseInt(ySlider.value));
+            };
+            sampleImg.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+        });
+    </script>
+</body>
+</html>
